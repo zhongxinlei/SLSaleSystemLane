@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xmlns:aop="http://www.springframework.org/schema/aop"
+     xmlns:p="http://www.springframework.org/schema/p"
+     xmlns:context="http://www.springframework.org/schema/context"
+     xmlns:tx="http://www.springframework.org/schema/tx"
+     xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans.xsd
+         http://www.springframework.org/schema/aop
+         http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/context
+         http://www.springframework.org/schema/context/spring-context-3.2.xsd
+         http://www.springframework.org/schema/tx
+         http://www.springframework.org/schema/tx/spring-tx-3.2.xsd">
+         
+    <!-- read jdbc properties file -->
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+    
+    <!-- JNDI to get datasource(dbcp connection pool) -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close" scope="singleton">
+    	<property name="driverClassName" value="${jdbc.driver}"></property>
+    	<property name="url" value="${jdbc.url}"></property>
+    	<property name="username" value="${jdbc.username}"></property>
+    	<property name="password" value="${jdbc.password}"></property>
+    	<property name="initialSize" value="${initialSize}"></property>
+    	<property name="maxActive" value="${maxActive}"></property>
+    	<property name="maxIdle" value="${maxIdle}"></property>
+    	<property name="minIdle" value="${minIdle}"></property>
+    	<property name="maxWait" value="${maxWait}"></property>
+    	<!-- 当前的空闲连接数<2，&&当前活动数>最大活动数-3 -->
+    	<property name="removeAbandonedTimeout" value="${removeAbandonedTimeout}"></property>
+    	<property name="removeAbandoned" value="${removeAbandoned}"></property>
+    	
+    	<!-- sql心跳：保证连接池中的连接是真实有效的 -->
+    	<!-- testWhileIdle testOnBorrow testOnReturn validationQuery: select 1 -->
+    	<!-- 开启Evict的定时校验，循环校验 -->
+    	<property name="testWhileIdle" value="true"></property>
+    	<!-- 定义Evict时间间隔，单位是毫秒，大于0才会开启evict -->
+    	<property name="timeBetweenEvictionRunsMillis" value="60000"></property>
+    	<!-- borrowObject时，会对拿到的连接进行校验 -->
+    	<property name="testOnBorrow" value="false"></property>
+    	<property name="testOnReturn" value="false"></property>
+    	<!-- 校验使用的sql语句 -->
+    	<property name="validationQuery" value="select 1"></property>
+    	<property name="numTestsPerEvictionRun" value="${maxActive}"></property>
+    </bean>
+    
+    <!-- 事务管理 -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    	<property name="dataSource" ref="dataSource"></property>
+    </bean>
+    <!-- 配置mybatis sqlSessionFactoryBean -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+    	<property name="dataSource" ref="dataSource"></property>
+    	<property name="configLocation" value="classpath:mybatis-config.xml"></property>
+    </bean>
+    <!-- AOP事务管理 -->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    <aop:config proxy-target-class="true">
+    	<aop:pointcut expression="execution(* *org.slsale.service..*(..))" id="transService"/>
+    	<aop:advisor advice-ref="txAdvice" pointcut-ref="transService"/>
+    </aop:config>
+    <!-- txAdvice 需要定义transactionManager -->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+    	<tx:attributes>
+    		<tx:method name="hl*" propagation="REQUIRED" rollback-for="Exception"/>
+    	</tx:attributes>
+    </tx:advice>
+    
+    <!-- mapper 接口所在的包名，spring会自动查找其下的mapper -->
+    <bean id="" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+    	<property name="basePackage" value="org.slsale.dao"></property>
+    </bean>
+    
+    <!-- redis配置 -->
+         
+
+</beans>
+
